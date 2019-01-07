@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">RGBit</string>
+    <string name="error">An error has occured</string>
+    <string name="request_permission">Permission needed</string>
+</resources>

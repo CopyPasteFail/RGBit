@@ -1,0 +1,15 @@
+#don't bother putting .iml files or .idea/ in version control, as their contents will be regenerated.
+*.iml
+/.idea/modules.xml
+.gradle
+/local.properties
+/.idea/workspace.xml
+/.idea/libraries
+.DS_Store
+# You shouldn't bother backing up the build folder since everything in there is automatically generated.
+/build
+/captures
+.externalNativeBuild
+*.apk
+/.idea/caches/build_file_checksums.ser
+/app/client/release/
