@@ -520,12 +520,14 @@ class MainActivity : AppCompatActivity(), View.OnClickListener,
     }
 
     /**
-     * Starts a background thread and its [Handler].
+     * Starts a background thread and its [Handler]
+     * Using the Looper we create a Pipeline Thread
      */
     private fun startBackgroundThread()
     {
         // starting a new thread that has a looper
         backgroundThread = HandlerThread("CameraBackground").also { it.start() }
+        // associate the looper with the handler
         backgroundHandler = Handler(backgroundThread?.looper)
     }
 
