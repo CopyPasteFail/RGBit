@@ -38,48 +38,51 @@ class MainActivity : AppCompatActivity(), View.OnClickListener,
     /**
      * [TextureView.SurfaceTextureListener] handles several lifecycle events on a
      * [TextureView].
+     * This listener can be used to be notified when the surface texture associated with this texture view is available
      */
     private val surfaceTextureListener = object : TextureView.SurfaceTextureListener
     {
-        override fun onSurfaceTextureAvailable(texture: SurfaceTexture, width: Int, height: Int) {
+        /** Invoked when a [TextureView]'s SurfaceTexture is ready for use */
+        override fun onSurfaceTextureAvailable(texture: SurfaceTexture, width: Int, height: Int)
+        {
             openCamera(width, height)
         }
 
-        override fun onSurfaceTextureSizeChanged(texture: SurfaceTexture, width: Int, height: Int) {
+        /** Invoked when the [SurfaceTexture]'s buffers size changed */
+        override fun onSurfaceTextureSizeChanged(texture: SurfaceTexture, width: Int, height: Int)
+        {
             configureTransform(width, height)
         }
 
+        /** Invoked when the specified [SurfaceTexture] is about to be destroyed */
         override fun onSurfaceTextureDestroyed(texture: SurfaceTexture) = true
 
+        /** Invoked when the specified [SurfaceTexture] is updated through [SurfaceTexture.updateTexImage] */
         override fun onSurfaceTextureUpdated(texture: SurfaceTexture) = Unit
-
     }
 
     /**
-     * ID of the current [CameraDevice].
+     * ID of the current [CameraDevice]
      */
     private lateinit var cameraId: String
 
     /**
-     * An [AutoFitTextureView] for camera preview.
+     * An [AutoFitTextureView] for camera preview
      */
     private lateinit var textureView: AutoFitTextureView
 
     /**
-     * A [CameraCaptureSession] for camera preview.
+     * A [CameraCaptureSession] for camera preview
      */
     private var captureSession: CameraCaptureSession? = null
 
     /**
-     * A reference to the opened [CameraDevice].
+     * A reference to the opened [CameraDevice]
      */
     private var cameraDevice: CameraDevice? = null
 
     /**
-     * The [android.util.Size] of camera preview.
-     */
-    /**
-     * The [android.util.Size] of camera preview.
+     * The [android.util.Size] of camera preview
      */
     private lateinit var previewSize: Size
 
@@ -492,10 +495,12 @@ class MainActivity : AppCompatActivity(), View.OnClickListener,
     }
 
     /**
-     * Closes the current [CameraDevice].
+     * Closes the current [CameraDevice]
      */
-    private fun closeCamera() {
-        try {
+    private fun closeCamera()
+    {
+        try
+        {
             cameraLock.acquire()
             captureSession?.close()
             captureSession = null
@@ -503,9 +508,13 @@ class MainActivity : AppCompatActivity(), View.OnClickListener,
             cameraDevice = null
             imageReader?.close()
             imageReader = null
-        } catch (e: InterruptedException) {
+        }
+        catch (e: InterruptedException)
+        {
             throw RuntimeException("Interrupted while trying to lock camera closing.", e)
-        } finally {
+        }
+        finally
+        {
             cameraLock.release()
         }
     }
@@ -515,6 +524,7 @@ class MainActivity : AppCompatActivity(), View.OnClickListener,
      */
     private fun startBackgroundThread()
     {
+        // starting a new thread that has a looper
         backgroundThread = HandlerThread("CameraBackground").also { it.start() }
         backgroundHandler = Handler(backgroundThread?.looper)
     }
@@ -522,13 +532,19 @@ class MainActivity : AppCompatActivity(), View.OnClickListener,
     /**
      * Stops the background thread and its [Handler].
      */
-    private fun stopBackgroundThread() {
+    private fun stopBackgroundThread()
+    {
+        // Quits the handler thread's looper safely
         backgroundThread?.quitSafely()
-        try {
+        try
+        {
+            // Waits for this thread to die
             backgroundThread?.join()
             backgroundThread = null
             backgroundHandler = null
-        } catch (e: InterruptedException) {
+        }
+        catch (e: InterruptedException)
+        {
             Log.e(TAG, e.toString())
         }
 
