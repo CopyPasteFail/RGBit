@@ -144,7 +144,7 @@ class MainActivity : AppCompatActivity(), View.OnClickListener,
      * still image is ready to be saved.
      */
     private val onImageAvailableListener = ImageReader.OnImageAvailableListener{
-        backgroundHandler?.post(ImageSaver(it.acquireNextImage(), file))
+        backgroundHandler?.post(ImageSaver(it.acquireNextImage(), file)) // add the Runnable to the message queue
     }
 
     /**
@@ -355,7 +355,8 @@ class MainActivity : AppCompatActivity(), View.OnClickListener,
      * @param width  The width of available size for camera preview
      * @param height The height of available size for camera preview
      */
-    private fun setUpCameraOutputs(width: Int, height: Int) {
+    private fun setUpCameraOutputs(width: Int, height: Int)
+    {
         // A system service manager for detecting, characterizing, and connecting to CameraDevices
         val cameraManager = getSystemService(Context.CAMERA_SERVICE) as CameraManager
 
@@ -381,29 +382,48 @@ class MainActivity : AppCompatActivity(), View.OnClickListener,
                  */
                 val streamConfiguration = characteristics.get(
                     CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP
-                ) ?: continue // skip if null
+                ) ?: continue // skip if StreamConfigurationMap is null
 
-                // For still image captures, we use the largest available size.
-                val largest = Collections.max(
+                /**
+                 * For still image captures, we use the largest available size:
+                 * Get an array of supported sizes for a given format, and then get the largest size by using
+                 * the [CompareSizesByArea] comperator, the result will be save in a [Size] class - an Immutable class
+                 * for describing width and height dimensions in pixels
+                 */
+                val largestOutputSize = Collections.max(
                     Arrays.asList(*streamConfiguration.getOutputSizes(ImageFormat.JPEG)),
                     CompareSizesByArea())
 
-                imageReader = ImageReader.newInstance(
-                    largest.width, largest.height,
-                    ImageFormat.JPEG, /*maxImages*/ 2
+                /** The ImageReader class allows direct application access to image data rendered
+                 * into a [android.view.Surface] which is a raw buffet that the
+                 * [android.hardware.camera2.CameraDevice.createCaptureSession] draw into
+                 *
+                 * The image data is encapsulated in [android.media.Image] objects, and multiple such objects can be accessed
+                 * at the same time, up to the number specified by the {maxImages} constructor parameter.
+                 * New images sent to an ImageReader through its [android.view.Surface] are queued until accessed
+                 * through the [android.media.ImageReader.acquireLatestImage] or
+                 * [android.media.ImageReader.acquireNextImage] call. Due to memory limits, an image source will
+                 * eventually stall or drop Images in trying to render to the Surface if the ImageReader does not
+                 * obtain and release Images at a rate equal to the production rate
+                 */
+                imageReader = ImageReader.newInstance( // Create a new reader for images of the desired size and format
+                    largestOutputSize.width, largestOutputSize.height,
+                    ImageFormat.JPEG, 2
                 ).apply {
+                    // Register a listener to be invoked when a new image becomes available from the ImageReader
                     setOnImageAvailableListener(onImageAvailableListener, backgroundHandler)
                 }
 
                 // Find out if we need to swap dimension to get the preview size relative to sensor coordinate
+                // displayRotation will be the rotation of the screen from its "natural" orientation {0,90,180,270}
                 val displayRotation = windowManager.defaultDisplay.rotation
                 // sensor orientation is the physical rotation of the device’s camera sensor
                 @Suppress("NULLABILITY_MISMATCH_BASED_ON_JAVA_ANNOTATIONS")
                 sensorOrientation = characteristics.get(CameraCharacteristics.SENSOR_ORIENTATION)
                 val swappedDimensions = areDimensionsSwapped(displayRotation)
 
-                val displaySize = Point()
-                windowManager.defaultDisplay.getSize(displaySize)
+                val displaySize = Point() // Point holds two integer coordinates
+                windowManager.defaultDisplay.getSize(displaySize) // Gets the size of the display, in pixels
                 val rotatedPreviewWidth = if (swappedDimensions) height else width
                 val rotatedPreviewHeight = if (swappedDimensions) width else height
                 var maxPreviewWidth = if (swappedDimensions) displaySize.y else displaySize.x
@@ -412,31 +432,32 @@ class MainActivity : AppCompatActivity(), View.OnClickListener,
                 if (maxPreviewWidth > MAX_PREVIEW_WIDTH) maxPreviewWidth = MAX_PREVIEW_WIDTH
                 if (maxPreviewHeight > MAX_PREVIEW_HEIGHT) maxPreviewHeight = MAX_PREVIEW_HEIGHT
 
+                /** Get a list of sizes compatible with the [SurfaceTexture] class to use as an output. */
+                val compatibleSizesList = streamConfiguration.getOutputSizes(SurfaceTexture::class.java)
+
                 // Danger, W.R.! Attempting to use too large a preview size could  exceed the camera
                 // bus' bandwidth limitation, resulting in gorgeous previews but the storage of
                 // garbage capture data.
-                previewSize = chooseOptimalSize(
-                    streamConfiguration.getOutputSizes(SurfaceTexture::class.java),
-                    rotatedPreviewWidth, rotatedPreviewHeight,
-                    maxPreviewWidth, maxPreviewHeight,
-                    largest
-                )
+                previewSize = chooseOptimalSize(compatibleSizesList, rotatedPreviewWidth, rotatedPreviewHeight,
+                    maxPreviewWidth, maxPreviewHeight, largestOutputSize)
 
                 // We fit the aspect ratio of TextureView to the size of preview we picked.
-                if (resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE) {
+                if (resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE)
+                {
                     textureView.setAspectRatio(previewSize.width, previewSize.height)
-                } else {
+                }
+                else
+                {
                     textureView.setAspectRatio(previewSize.height, previewSize.width)
                 }
 
                 // Check if the flash is supported.
-                flashSupported =
-                        characteristics.get(CameraCharacteristics.FLASH_INFO_AVAILABLE) == true
+                flashSupported = characteristics.get(CameraCharacteristics.FLASH_INFO_AVAILABLE) == true
 
                 this.cameraId = cameraId
 
                 // We've found a viable camera and finished setting up member variables,
-                // so we don't need to iterate through other available cameras.
+                // so we don't need to iterate through other available cameras
                 return
             }
         }
@@ -460,7 +481,8 @@ class MainActivity : AppCompatActivity(), View.OnClickListener,
      *
      * @return true if the dimensions are swapped, false otherwise.
      */
-    private fun areDimensionsSwapped(displayRotation: Int): Boolean {
+    private fun areDimensionsSwapped(displayRotation: Int): Boolean
+    {
         var swappedDimensions = false
         when (displayRotation)
         {
@@ -499,6 +521,8 @@ class MainActivity : AppCompatActivity(), View.OnClickListener,
 
         setUpCameraOutputs(width, height)
         configureTransform(width, height)
+
+        /** A system service manager for detecting, characterizing, and connecting to [CameraDevice] */
         val cameraManager = getSystemService(Context.CAMERA_SERVICE) as CameraManager
         try
         {
@@ -507,6 +531,8 @@ class MainActivity : AppCompatActivity(), View.OnClickListener,
             {
                 throw RuntimeException("Time out waiting to lock camera opening.")
             }
+            // Open a connection to a camera with the given cameraId, a stateCallback which is invoked once the
+            // camera is opened and a handler on which the callback should be invoked
             cameraManager.openCamera(cameraId, stateCallback, backgroundHandler)
         }
         catch (e: CameraAccessException)
@@ -644,9 +670,9 @@ class MainActivity : AppCompatActivity(), View.OnClickListener,
     }
 
     /**
-     * Configures the necessary [android.graphics.Matrix] transformation to `textureView`.
+     * Configures the necessary [android.graphics.Matrix] transformation to [textureView].
      * This method should be called after the camera preview size is determined in
-     * setUpCameraOutputs and also the size of `textureView` is fixed.
+     * setUpCameraOutputs and also the size of [textureView] is fixed.
      *
      * @param viewWidth  The width of `textureView`
      * @param viewHeight The height of `textureView`
@@ -660,7 +686,7 @@ class MainActivity : AppCompatActivity(), View.OnClickListener,
         val centerX = viewRect.centerX()
         val centerY = viewRect.centerY()
 
-        if (Surface.ROTATION_90 == rotation || Surface.ROTATION_270 == rotation)
+        if (rotation == Surface.ROTATION_90 || rotation == Surface.ROTATION_270)
         {
             bufferRect.offset(centerX - bufferRect.centerX(), centerY - bufferRect.centerY())
             val scale = Math.max(
@@ -917,6 +943,11 @@ class MainActivity : AppCompatActivity(), View.OnClickListener,
          * @param aspectRatio       The aspect ratio
          * @return The optimal `Size`, or an arbitrary one if none were big enough
          */
+
+        /**
+         * @JvmStatic Specifies that an additional static method needs to be generated from this element if it's
+         * a function. If this element is a property, additional static getter/setter methods should be generated.
+         */
         @JvmStatic
         private fun chooseOptimalSize(
             choices: Array<Size>,
@@ -925,18 +956,18 @@ class MainActivity : AppCompatActivity(), View.OnClickListener,
             maxWidth: Int,
             maxHeight: Int,
             aspectRatio: Size
-        ): Size {
-
+        ): Size
+        {
             // Collect the supported resolutions that are at least as big as the preview Surface
             val bigEnough = ArrayList<Size>()
             // Collect the supported resolutions that are smaller than the preview Surface
             val notBigEnough = ArrayList<Size>()
             val w = aspectRatio.width
             val h = aspectRatio.height
-            for (option in choices) {
-                if (option.width <= maxWidth && option.height <= maxHeight &&
-                    option.height == option.width * h / w
-                ) {
+            for (option in choices)
+            {
+                if (option.width <= maxWidth && option.height <= maxHeight && option.height == option.width * h / w)
+                {
                     if (option.width >= textureViewWidth && option.height >= textureViewHeight) {
                         bigEnough.add(option)
                     } else {
@@ -945,14 +976,15 @@ class MainActivity : AppCompatActivity(), View.OnClickListener,
                 }
             }
 
-            // Pick the smallest of those big enough. If there is no one big enough, pick the
-            // largest of those not big enough.
-            return when {
+            // Pick the smallest of those big enough. If big enough found, pick the largest of those not big enough
+            return when
+            {
                 bigEnough.size > 0 -> Collections.min(bigEnough, CompareSizesByArea())
                 notBigEnough.size > 0 -> Collections.max(notBigEnough, CompareSizesByArea())
-                else -> {
+                else ->
+                {
                     Log.e(TAG, "Couldn't find any suitable preview size")
-                    choices[0]
+                    choices[0] // an arbitrary choice
                 }
             }
         }
@@ -960,8 +992,10 @@ class MainActivity : AppCompatActivity(), View.OnClickListener,
 
     internal class CompareSizesByArea : Comparator<Size>
     {
-        // We cast here to ensure the multiplications won't overflow
+        // The return value is -1 if the specified value is negative; 0 if the specified value is zero;
+        // and 1 if the specified value is positive
         override fun compare(lhs: Size, rhs: Size) =
+        // We cast here to ensure the multiplications won't overflow
             signum(lhs.width.toLong() * lhs.height - rhs.width.toLong() * rhs.height)
     }
 
