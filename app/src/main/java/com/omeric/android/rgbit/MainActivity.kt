@@ -44,12 +44,14 @@ class MainActivity : AppCompatActivity(), View.OnClickListener,
         /** Invoked when a [TextureView]'s SurfaceTexture is ready for use */
         override fun onSurfaceTextureAvailable(texture: SurfaceTexture, width: Int, height: Int)
         {
+            Log.d(TAG, ":surfaceTextureListener::onSurfaceTextureAvailable")
             openCamera(width, height)
         }
 
         /** Invoked when the [SurfaceTexture]'s buffers size changed */
         override fun onSurfaceTextureSizeChanged(texture: SurfaceTexture, width: Int, height: Int)
         {
+            Log.d(TAG, ":surfaceTextureListener::onSurfaceTextureSizeChanged")
             configureTransform(width, height)
         }
 
@@ -99,6 +101,7 @@ class MainActivity : AppCompatActivity(), View.OnClickListener,
         // The method called when a camera device has finished opening
         override fun onOpened(cameraDevice: CameraDevice)
         {
+            Log.d(TAG, ":stateCallback::onOpened")
             cameraLock.release()
             this@MainActivity.cameraDevice = cameraDevice
             createCameraPreviewSession()
@@ -107,6 +110,7 @@ class MainActivity : AppCompatActivity(), View.OnClickListener,
         // The method called when a camera device is no longer available for use
         override fun onDisconnected(cameraDevice: CameraDevice)
         {
+            Log.d(TAG, ":stateCallback::onDisconnected")
             cameraLock.release()
             cameraDevice.close()
             this@MainActivity.cameraDevice = null
@@ -114,6 +118,7 @@ class MainActivity : AppCompatActivity(), View.OnClickListener,
 
         override fun onError(cameraDevice: CameraDevice, error: Int)
         {
+            Log.d(TAG, ":stateCallback::onError")
             onDisconnected(cameraDevice)
             finish()
         }
@@ -141,9 +146,10 @@ class MainActivity : AppCompatActivity(), View.OnClickListener,
 
     /**
      * This a callback object for the [ImageReader]. "onImageAvailable" will be called when a
-     * still image is ready to be saved.
+     * still image is ready to be saved
      */
     private val onImageAvailableListener = ImageReader.OnImageAvailableListener{
+        Log.d(TAG, ":onImageAvailableListener")
         backgroundHandler?.post(ImageSaver(it.acquireNextImage(), file)) // add the Runnable to the message queue
     }
 
@@ -186,6 +192,7 @@ class MainActivity : AppCompatActivity(), View.OnClickListener,
     {
         private fun process(result: CaptureResult)
         {
+            Log.d(TAG, ":captureCallback::process: cameraState - $cameraState")
             when (cameraState)
             {
                 STATE_PREVIEW -> Unit // Do nothing when the camera preview is working normally.
@@ -215,6 +222,7 @@ class MainActivity : AppCompatActivity(), View.OnClickListener,
 
         private fun capturePicture(result: CaptureResult)
         {
+            Log.d(TAG, ":captureCallback::capturePicture")
             val afState = result.get(CaptureResult.CONTROL_AF_STATE)
             if (afState == null)
             {
@@ -237,18 +245,15 @@ class MainActivity : AppCompatActivity(), View.OnClickListener,
             }
         }
 
-        override fun onCaptureProgressed(session: CameraCaptureSession, request: CaptureRequest,
-                                         partialResult: CaptureResult)
+        override fun onCaptureProgressed(session: CameraCaptureSession, request: CaptureRequest, partialResult: CaptureResult)
         {
+            Log.d(TAG, ":captureCallback::onCaptureProgressed")
             process(partialResult)
         }
 
-        override fun onCaptureCompleted(
-            session: CameraCaptureSession,
-            request: CaptureRequest,
-            result: TotalCaptureResult
-        )
+        override fun onCaptureCompleted(session: CameraCaptureSession, request: CaptureRequest, result: TotalCaptureResult)
         {
+            Log.d(TAG, ":captureCallback::onCaptureCompleted")
             process(result)
         }
     }
@@ -257,6 +262,7 @@ class MainActivity : AppCompatActivity(), View.OnClickListener,
     {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+        Log.d(TAG, ":onCreate")
 
         // Example of a call to a native method
 //        sample_text.text = stringFromJNI()
@@ -267,6 +273,7 @@ class MainActivity : AppCompatActivity(), View.OnClickListener,
     override fun onResume()
     {
         super.onResume()
+        Log.d(TAG, ":onResume")
         startBackgroundThread()
 
         // When the screen is turned off and turned back on, the SurfaceTexture is already
@@ -285,6 +292,7 @@ class MainActivity : AppCompatActivity(), View.OnClickListener,
 
     override fun onPause()
     {
+        Log.d(TAG, ":onPause")
         closeCamera()
         stopBackgroundThread()
         super.onPause()
@@ -292,6 +300,7 @@ class MainActivity : AppCompatActivity(), View.OnClickListener,
 
     private fun requestCameraPermission()
     {
+        Log.d(TAG, ":requestCameraPermission")
         if (shouldShowRequestPermissionRationale(Manifest.permission.CAMERA))
         {
             AlertDialog.Builder(this)
@@ -315,6 +324,7 @@ class MainActivity : AppCompatActivity(), View.OnClickListener,
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<String>, grantResults: IntArray)
     {
+        Log.d(TAG, ":onRequestPermissionsResult")
         if (requestCode == REQUEST_CAMERA_PERMISSION)
         {
             for (grantResult in grantResults)
@@ -373,6 +383,7 @@ class MainActivity : AppCompatActivity(), View.OnClickListener,
      */
     private fun setUpCameraOutputs(width: Int, height: Int)
     {
+        Log.d(TAG, ":setUpCameraOutputs")
         // A system service manager for detecting, characterizing, and connecting to CameraDevices
         val cameraManager = getSystemService(Context.CAMERA_SERVICE) as CameraManager
 
@@ -499,6 +510,7 @@ class MainActivity : AppCompatActivity(), View.OnClickListener,
      */
     private fun areDimensionsSwapped(displayRotation: Int): Boolean
     {
+        Log.d(TAG, ":areDimensionsSwapped")
         var swappedDimensions = false
         when (displayRotation)
         {
@@ -527,6 +539,7 @@ class MainActivity : AppCompatActivity(), View.OnClickListener,
      */
     private fun openCamera(width: Int, height: Int)
     {
+        Log.d(TAG, ":openCamera")
         // ask permission for the camera
         val permission = ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA)
         if (permission != PackageManager.PERMISSION_GRANTED)
@@ -566,6 +579,7 @@ class MainActivity : AppCompatActivity(), View.OnClickListener,
      */
     private fun closeCamera()
     {
+        Log.d(TAG, ":closeCamera")
         try
         {
             cameraLock.acquire()
@@ -592,6 +606,7 @@ class MainActivity : AppCompatActivity(), View.OnClickListener,
      */
     private fun startBackgroundThread()
     {
+        Log.d(TAG, ":startBackgroundThread")
         // starting a new thread that has a looper
         backgroundThread = HandlerThread("CameraBackground").also { it.start() }
         // associate the looper with the handler
@@ -603,6 +618,7 @@ class MainActivity : AppCompatActivity(), View.OnClickListener,
      */
     private fun stopBackgroundThread()
     {
+        Log.d(TAG, ":stopBackgroundThread")
         // Quits the handler thread's looper safely
         backgroundThread?.quitSafely()
         try
@@ -616,7 +632,6 @@ class MainActivity : AppCompatActivity(), View.OnClickListener,
         {
             Log.e(TAG, e.toString())
         }
-
     }
 
     /**
@@ -624,6 +639,7 @@ class MainActivity : AppCompatActivity(), View.OnClickListener,
      */
     private fun createCameraPreviewSession()
     {
+        Log.d(TAG, ":createCameraPreviewSession")
         try
         {
             val surfaceTexture = autoFitTextureView.surfaceTexture
@@ -715,6 +731,7 @@ class MainActivity : AppCompatActivity(), View.OnClickListener,
      */
     private fun configureTransform(viewWidth: Int, viewHeight: Int)
     {
+        Log.d(TAG, ":configureTransform")
         val rotation = windowManager.defaultDisplay.rotation
         val matrix = Matrix()
         val viewRect = RectF(0f, 0f, viewWidth.toFloat(), viewHeight.toFloat())
@@ -725,11 +742,10 @@ class MainActivity : AppCompatActivity(), View.OnClickListener,
         if (rotation == Surface.ROTATION_90 || rotation == Surface.ROTATION_270)
         {
             bufferRect.offset(centerX - bufferRect.centerX(), centerY - bufferRect.centerY())
-            val scale = Math.max(
-                viewHeight.toFloat() / previewSize.height,
-                viewWidth.toFloat() / previewSize.width
-            )
-            with(matrix) {
+            val scale = Math.max(viewHeight.toFloat() / previewSize.height,
+                viewWidth.toFloat() / previewSize.width)
+            with(matrix)
+            {
                 setRectToRect(viewRect, bufferRect, Matrix.ScaleToFit.FILL)
                 postScale(scale, scale, centerX, centerY)
                 postRotate((90 * (rotation - 2)).toFloat(), centerX, centerY)
@@ -747,19 +763,14 @@ class MainActivity : AppCompatActivity(), View.OnClickListener,
      */
     private fun lockFocus()
     {
+        Log.d(TAG, ":lockFocus")
         try
         {
-            // This is how to tell the camera to lock focus.
-            previewRequestBuilder.set(
-                CaptureRequest.CONTROL_AF_TRIGGER,
-                CameraMetadata.CONTROL_AF_TRIGGER_START
-            )
+            // Tell the camera to lock focus
+            previewRequestBuilder.set(CaptureRequest.CONTROL_AF_TRIGGER, CameraMetadata.CONTROL_AF_TRIGGER_START)
             // Tell #captureCallback to wait for the lock.
             cameraState = STATE_WAITING_LOCK
-            captureSession?.capture(
-                previewRequestBuilder.build(), captureCallback,
-                backgroundHandler
-            )
+            captureSession?.capture(previewRequestBuilder.build(), captureCallback, backgroundHandler)
         }
         catch (e: CameraAccessException)
         {
@@ -773,6 +784,7 @@ class MainActivity : AppCompatActivity(), View.OnClickListener,
      */
     private fun runPrecaptureSequence()
     {
+        Log.d(TAG, ":runPrecaptureSequence")
         try
         {
             // This is how to tell the camera to trigger.
@@ -795,6 +807,7 @@ class MainActivity : AppCompatActivity(), View.OnClickListener,
      */
     private fun captureStillPicture()
     {
+        Log.d(TAG, ":captureStillPicture")
         try
         {
             if (cameraDevice == null) return
@@ -810,16 +823,10 @@ class MainActivity : AppCompatActivity(), View.OnClickListener,
                 // We have to take that into account and rotate JPEG properly.
                 // For devices with orientation of 90, we return our mapping from ORIENTATIONS.
                 // For devices with orientation of 270, we need to rotate the JPEG 180 degrees.
-                set(
-                    CaptureRequest.JPEG_ORIENTATION,
-                    (ORIENTATIONS.get(rotation) + sensorOrientation + 270) % 360
-                )
+                set(CaptureRequest.JPEG_ORIENTATION, (ORIENTATIONS.get(rotation) + sensorOrientation + 270) % 360)
 
                 // Use the same AE and AF modes as the preview.
-                set(
-                    CaptureRequest.CONTROL_AF_MODE,
-                    CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE
-                )
+                set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE)
             }?.also { setAutoFlash(it) }
 
             val captureCallback = object : CameraCaptureSession.CaptureCallback()
@@ -827,6 +834,7 @@ class MainActivity : AppCompatActivity(), View.OnClickListener,
                 override fun onCaptureCompleted(session: CameraCaptureSession, request: CaptureRequest,
                     result: TotalCaptureResult)
                 {
+                    Log.d(TAG, ":captureCallback::onCaptureCompleted: Saved - $file")
                     Toast.makeText(applicationContext, "Saved: $file", Toast.LENGTH_SHORT).show()
 //                    runOnUiThread { Toast.makeText(this, "Saved: $file", Toast.LENGTH_SHORT).show()}
                     Log.d(TAG, file.toString())
@@ -848,14 +856,17 @@ class MainActivity : AppCompatActivity(), View.OnClickListener,
 
     private fun setAutoFlash(requestBuilder: CaptureRequest.Builder)
     {
+        Log.d(TAG, ":setAutoFlash")
         if (flashSupported)
         {
+            // set auto exposure mode: camera device controls the camera's flash unit, firing it in low-light conditions
             requestBuilder.set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_ON_AUTO_FLASH)
         }
     }
 
     override fun onClick(view: View)
     {
+        Log.d(TAG, ":onClick")
         when (view.id)
         {
             R.id.picture -> lockFocus()
@@ -867,6 +878,7 @@ class MainActivity : AppCompatActivity(), View.OnClickListener,
      */
     private fun unlockFocus()
     {
+        Log.d(TAG, ":unlockFocus")
         try
         {
             // Reset the auto-focus trigger
@@ -980,6 +992,7 @@ class MainActivity : AppCompatActivity(), View.OnClickListener,
         private fun chooseOptimalSize(choices: Array<Size>, textureViewWidth: Int, textureViewHeight: Int,
             maxWidth: Int, maxHeight: Int, aspectRatio: Size): Size
         {
+            Log.d(TAG, ":chooseOptimalSize")
             // Collect the supported resolutions that are at least as big as the preview Surface
             val bigEnough = ArrayList<Size>()
             // Collect the supported resolutions that are smaller than the preview Surface
@@ -1019,40 +1032,41 @@ class MainActivity : AppCompatActivity(), View.OnClickListener,
         override fun compare(lhs: Size, rhs: Size) =
         // We cast here to ensure the multiplications won't overflow
             signum(lhs.width.toLong() * lhs.height - rhs.width.toLong() * rhs.height)
+
     }
 
     /**
      * Saves a JPEG [Image] into the specified [File].
      */
-    internal class ImageSaver(
-        /**
-         * The JPEG image
-         */
-        private val image: Image,
-
-        /**
-         * The file we save the image into.
-         */
-        private val file: File
-    ) : Runnable {
-
-        override fun run() {
+    internal class ImageSaver(private val image: Image, private val file: File) : Runnable
+    {
+        override fun run()
+        {
+            Log.d(TAG, ":run")
             val buffer = image.planes[0].buffer
             val bytes = ByteArray(buffer.remaining())
             buffer.get(bytes)
             var output: FileOutputStream? = null
-            try {
+            try
+            {
                 output = FileOutputStream(file).apply {
                     write(bytes)
                 }
-            } catch (e: IOException) {
+            }
+            catch (e: IOException)
+            {
                 Log.e(TAG, e.toString())
-            } finally {
+            }
+            finally
+            {
                 image.close()
                 output?.let {
-                    try {
+                    try
+                    {
                         it.close()
-                    } catch (e: IOException) {
+                    }
+                    catch (e: IOException)
+                    {
                         Log.e(TAG, e.toString())
                     }
                 }
@@ -1062,11 +1076,9 @@ class MainActivity : AppCompatActivity(), View.OnClickListener,
         companion object
         {
             /**
-             * Tag for the [Log].
+             * Tag for the [Log]
              */
             private val TAG = "gipsy:" + this::class.java.name
         }
     }
 }
-
-
