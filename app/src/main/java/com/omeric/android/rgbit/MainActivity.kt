@@ -119,7 +119,7 @@ class MainActivity : AppCompatActivity(), View.OnClickListener,
 
         override fun onError(cameraDevice: CameraDevice, error: Int)
         {
-            Log.d(TAG, ":stateCallback::onError")
+            Log.d(TAG, ":stateCallback::onError = $error")
             onDisconnected(cameraDevice)
             finish()
         }
@@ -678,6 +678,7 @@ class MainActivity : AppCompatActivity(), View.OnClickListener,
             previewRequestBuilder = cameraDevice!!.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW)
             // The surface is used as an output target for this request
             previewRequestBuilder.addTarget(surface)
+            previewRequestBuilder.addTarget(imageReader!!.surface)
 
             /**
              * Create a CameraCaptureSession for camera preview:
@@ -1073,6 +1074,8 @@ class MainActivity : AppCompatActivity(), View.OnClickListener,
             val bytes = ByteArray(buffer.remaining())
             buffer.get(bytes)
             var output: FileOutputStream? = null
+            image.close()
+/*
             try
             {
                 output = FileOutputStream(file).apply{
@@ -1086,7 +1089,8 @@ class MainActivity : AppCompatActivity(), View.OnClickListener,
             finally
             {
                 image.close()
-                output?.let {
+
+                output?.let{
                     try
                     {
                         it.close()
@@ -1097,6 +1101,7 @@ class MainActivity : AppCompatActivity(), View.OnClickListener,
                     }
                 }
             }
+        */
         }
 
         companion object
