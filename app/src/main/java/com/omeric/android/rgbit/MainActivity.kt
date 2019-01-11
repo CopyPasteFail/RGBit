@@ -186,8 +186,15 @@ class MainActivity : AppCompatActivity(), View.OnClickListener,
     private var sensorOrientation = 0
 
     /**
-     * A [CameraCaptureSession.CaptureCallback] that handles events related to JPEG capture.
+     * A [CameraCaptureSession.CaptureCallback] that handles events related to JPEG capture
+     *
+     * A callback object for tracking the progress of a [CaptureRequest] submitted to the
+     * camera device
+     *
+     * This callback is invoked when a request triggers a capture to start, and when the capture is complete.
+     * In case on an error capturing an image, the error method is triggered instead of the completion method
      */
+
     private val captureCallback = object : CameraCaptureSession.CaptureCallback()
     {
         private fun process(result: CaptureResult)
@@ -245,15 +252,29 @@ class MainActivity : AppCompatActivity(), View.OnClickListener,
             }
         }
 
+        /**
+         * [CaptureResult] objects contain only metadata about a frame capture, no actual pixel information
+         * The associated pixel data are sent to the designated target Surface in [CaptureRequest.Builder]
+         */
         override fun onCaptureProgressed(session: CameraCaptureSession, request: CaptureRequest, partialResult: CaptureResult)
         {
             Log.d(TAG, ":captureCallback::onCaptureProgressed")
             process(partialResult)
         }
 
+        /**
+         * [TotalCaptureResult] is the total assembled results of a single image capture from the image sensor
+         *
+         * Contains the final configuration for the capture hardware (sensor, lens, flash), the processing pipeline,
+         * the control algorithms, and the output buffers
+         *
+         * All properties returned by [CaptureResult.get] using the keys in [CaptureResult]
+         * i.e. [CaptureResult.CONTROL_AF_MODE]
+         */
         override fun onCaptureCompleted(session: CameraCaptureSession, request: CaptureRequest, result: TotalCaptureResult)
         {
             Log.d(TAG, ":captureCallback::onCaptureCompleted")
+            result.get(CaptureResult.CONTROL_AF_MODE)
             process(result)
         }
     }
@@ -656,7 +677,6 @@ class MainActivity : AppCompatActivity(), View.OnClickListener,
             // The surface is used as an output target for this request
             previewRequestBuilder.addTarget(surface)
 
-            // Create a CameraCaptureSession for camera preview
             /**
              * Create a CameraCaptureSession for camera preview:
              * Create a new camera capture session by providing the target output set of Surfaces to the
@@ -974,6 +994,9 @@ class MainActivity : AppCompatActivity(), View.OnClickListener,
          * size doesn't exist, choose the largest one that is at most as large as the respective max
          * size, and whose aspect ratio matches with the specified value.
          *
+         * @JvmStatic Specifies that an additional static method needs to be generated from this element if it's
+         * a function. If this element is a property, additional static getter/setter methods should be generated.
+         *
          * @param choices           The list of sizes that the camera supports for the intended
          *                          output class
          * @param textureViewWidth  The width of the texture view relative to sensor coordinate
@@ -982,11 +1005,6 @@ class MainActivity : AppCompatActivity(), View.OnClickListener,
          * @param maxHeight         The maximum height that can be chosen
          * @param aspectRatio       The aspect ratio
          * @return The optimal `Size`, or an arbitrary one if none were big enough
-         */
-
-        /**
-         * @JvmStatic Specifies that an additional static method needs to be generated from this element if it's
-         * a function. If this element is a property, additional static getter/setter methods should be generated.
          */
         @JvmStatic
         private fun chooseOptimalSize(choices: Array<Size>, textureViewWidth: Int, textureViewHeight: Int,
@@ -1049,7 +1067,7 @@ class MainActivity : AppCompatActivity(), View.OnClickListener,
             var output: FileOutputStream? = null
             try
             {
-                output = FileOutputStream(file).apply {
+                output = FileOutputStream(file).apply{
                     write(bytes)
                 }
             }
