@@ -21,6 +21,7 @@ import android.util.Log
 import android.util.SparseIntArray
 import android.view.Surface
 import android.view.View
+import android.widget.Button
 import android.widget.Toast
 import java.io.File
 import java.io.FileOutputStream
@@ -284,6 +285,7 @@ class MainActivity : AppCompatActivity(), View.OnClickListener,
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
         Log.d(TAG, ":onCreate")
+        (findViewById<Button>(R.id.picture)).setOnClickListener(this)
 
         // Example of a call to a native method
 //        sample_text.text = stringFromJNI()
@@ -790,6 +792,15 @@ class MainActivity : AppCompatActivity(), View.OnClickListener,
             previewRequestBuilder.set(CaptureRequest.CONTROL_AF_TRIGGER, CameraMetadata.CONTROL_AF_TRIGGER_START)
             // Tell #captureCallback to wait for the lock.
             cameraState = STATE_WAITING_LOCK
+            /**
+             * Submit a request for an image to be captured by the camera device
+             *
+             * The request defines all the parameters for capturing the single image,
+             * including sensor, lens, flash, and post-processing settings
+             *
+             * Each request will produce one [CaptureResult] and produce new frames for one or more
+             * target Surfaces, set with [CaptureRequest.Builder]
+             */
             captureSession?.capture(previewRequestBuilder.build(), captureCallback, backgroundHandler)
         }
         catch (e: CameraAccessException)
@@ -923,8 +934,8 @@ class MainActivity : AppCompatActivity(), View.OnClickListener,
      */
 //    external fun stringFromJNI(): String
 
-    companion object {
-
+    companion object
+    {
         // Used to load the 'native-lib' library on application startup.
 /*
         init
@@ -933,19 +944,16 @@ class MainActivity : AppCompatActivity(), View.OnClickListener,
         }
 */
 
-        /**
-         * Tag for the [Log]
-         */
+        /** Tag for the [Log] */
         private val TAG = "gipsy:" + this::class.java.name
         private const val REQUEST_CAMERA_PERMISSION = 1
         private const val PIC_FILE_NAME = "pic.jpg"
 
-        /**
-         * Conversion from screen rotation to JPEG orientation.
-         */
+        /** Conversion from screen rotation to JPEG orientation */
         private val ORIENTATIONS = SparseIntArray()
 
-        init {
+        init
+        {
             ORIENTATIONS.append(Surface.ROTATION_0, 90)
             ORIENTATIONS.append(Surface.ROTATION_90, 0)
             ORIENTATIONS.append(Surface.ROTATION_180, 270)
