@@ -14,6 +14,7 @@ import android.media.Image
 import android.media.ImageReader
 import android.os.Handler
 import android.os.HandlerThread
+import android.renderscript.*
 import android.support.v4.app.ActivityCompat
 import android.support.v4.content.ContextCompat
 import android.support.v7.app.AlertDialog
@@ -24,8 +25,6 @@ import android.view.View
 import android.widget.Button
 import android.widget.Toast
 import java.io.File
-import java.io.FileOutputStream
-import java.io.IOException
 import java.lang.Long.signum
 import java.util.*
 import java.util.concurrent.Semaphore
@@ -151,7 +150,23 @@ class MainActivity : AppCompatActivity(), View.OnClickListener,
      */
     private val onImageAvailableListener = ImageReader.OnImageAvailableListener{
         Log.d(TAG, ":onImageAvailableListener")
-        backgroundHandler?.post(ImageSaver(it.acquireNextImage(), file)) // add the Runnable to the message queue
+        /**
+         * [ImageReader.acquireLatestImage] will acquire the latest Image from the [ImageReader]'s queue,
+         * dropping older one - This function is recommended to use over [ImageReader.acquireNextImage] for most use-cases,
+         * as it's more suited for real-time processing
+         */
+        // add the Runnable to the message queue
+        val image = it.acquireLatestImage()
+        if (image != null)
+        {
+            backgroundHandler?.post(ImageSaver(image, file, this))
+        }
+/*
+        else
+        {
+            backgroundHandler?.post(ImageSaver(it.acquireNextImage(), file, this))
+        }
+*/
     }
 
     /**
@@ -200,7 +215,7 @@ class MainActivity : AppCompatActivity(), View.OnClickListener,
     {
         private fun process(result: CaptureResult)
         {
-            Log.d(TAG, ":captureCallback::process: cameraState - $cameraState")
+//            Log.d(TAG, ":captureCallback::process: cameraState - $cameraState")
             when (cameraState)
             {
                 STATE_PREVIEW -> Unit // Do nothing when the camera preview is working normally.
@@ -259,7 +274,7 @@ class MainActivity : AppCompatActivity(), View.OnClickListener,
          */
         override fun onCaptureProgressed(session: CameraCaptureSession, request: CaptureRequest, partialResult: CaptureResult)
         {
-            Log.d(TAG, ":captureCallback::onCaptureProgressed")
+//            Log.d(TAG, ":captureCallback::onCaptureProgressed")
             process(partialResult)
         }
 
@@ -274,8 +289,7 @@ class MainActivity : AppCompatActivity(), View.OnClickListener,
          */
         override fun onCaptureCompleted(session: CameraCaptureSession, request: CaptureRequest, result: TotalCaptureResult)
         {
-            Log.d(TAG, ":captureCallback::onCaptureCompleted")
-            result.get(CaptureResult.CONTROL_AF_MODE)
+//            Log.d(TAG, ":captureCallback::onCaptureCompleted")
             process(result)
         }
     }
@@ -403,8 +417,12 @@ class MainActivity : AppCompatActivity(), View.OnClickListener,
      *
      * @param width  The width of available size for camera preview
      * @param height The height of available size for camera preview
+     *
+     * NOTE:
+     * It might be more efficient to use the [ImageFormat.FLEX_RGB_888], whereas [ImageFormat.JPEG] &
+     * [ImageFormat.YUV_420_888] are ALWAYS supported by the [android.hardware.camera2] API
      */
-    private fun setUpCameraOutputs(width: Int, height: Int)
+    private fun setUpCameraOutputs(width: Int, height: Int) : Boolean
     {
         Log.d(TAG, ":setUpCameraOutputs")
         // A system service manager for detecting, characterizing, and connecting to CameraDevices
@@ -412,6 +430,10 @@ class MainActivity : AppCompatActivity(), View.OnClickListener,
 
         try
         {
+            Log.d(TAG, ":setUpCameraOutputs: number of cameraId's = ${cameraManager.cameraIdList.size}")
+
+            if (cameraManager.cameraIdList.isEmpty()) throw NullPointerException("No camera is available")
+
             // looping through the cameras the device has until we found a one that satisfies the requirements
             for (cameraId in cameraManager.cameraIdList)
             {
@@ -423,6 +445,7 @@ class MainActivity : AppCompatActivity(), View.OnClickListener,
                     // skip if it's the front facing camera
                     continue
                 }
+                Log.d(TAG, ":setUpCameraOutputs:02")
 
                 /**
                  * StreamConfigurationMap the authoritative list for all output formats (and sizes respectively for that format)
@@ -433,6 +456,17 @@ class MainActivity : AppCompatActivity(), View.OnClickListener,
                 val streamConfiguration = characteristics.get(
                     CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP
                 ) ?: continue // skip if StreamConfigurationMap is null
+                Log.d(TAG, ":setUpCameraOutputs:03")
+
+
+
+/*
+                val outpusFormats = streamConfiguration.outputFormats
+//                Log.d(TAG, ":setUpCameraOutputs:03.1: outpusFormats = ${outpusFormats} ")
+                for (element in outpusFormats) {
+                    Log.d(TAG, ":setUpCameraOutputs:03.1: outpusFormats = 0x${Integer.toHexString(element)} ")
+                }
+*/
 
                 /**
                  * For still image captures, we use the largest available size:
@@ -441,11 +475,14 @@ class MainActivity : AppCompatActivity(), View.OnClickListener,
                  * for describing width and height dimensions in pixels
                  */
                 val largestOutputSize = Collections.max(
+//                    Arrays.asList(*streamConfiguration.getOutputSizes(ImageFormat.YUV_420_888)),
                     Arrays.asList(*streamConfiguration.getOutputSizes(ImageFormat.JPEG)),
                     CompareSizesByArea())
+                Log.d(TAG, ":setUpCameraOutputs:largestOutputSize: width = ${largestOutputSize.width}, " +
+                        "height = ${largestOutputSize.height}")
 
                 /** The ImageReader class allows direct application access to image data rendered
-                 * into a [android.view.Surface] which is a raw buffet that the
+                 * into a [android.view.Surface] which is a raw buffer that the
                  * [android.hardware.camera2.CameraDevice.createCaptureSession] draw into
                  *
                  * The image data is encapsulated in [android.media.Image] objects, and multiple such objects can be accessed
@@ -457,12 +494,14 @@ class MainActivity : AppCompatActivity(), View.OnClickListener,
                  * obtain and release Images at a rate equal to the production rate
                  */
                 imageReader = ImageReader.newInstance( // Create a new reader for images of the desired size and format
-                    largestOutputSize.width, largestOutputSize.height,
-                    ImageFormat.JPEG, 2
+                    largestOutputSize.width/DEVIDOR, largestOutputSize.height/DEVIDOR,
+//                    ImageFormat.YUV_420_888, 50
+                    ImageFormat.JPEG, MAX_IMAGES
                 ).apply {
                     // Register a listener to be invoked when a new image becomes available from the ImageReader
                     setOnImageAvailableListener(onImageAvailableListener, backgroundHandler)
                 }
+                Log.d(TAG, ":setUpCameraOutputs:05")
 
                 // Find out if we need to swap dimension to get the preview size relative to sensor coordinate
                 // displayRotation will be the rotation of the screen from its "natural" orientation {0,90,180,270}
@@ -484,12 +523,14 @@ class MainActivity : AppCompatActivity(), View.OnClickListener,
 
                 /** Get a list of sizes compatible with the [SurfaceTexture] class to use as an output. */
                 val compatibleSizesList = streamConfiguration.getOutputSizes(SurfaceTexture::class.java)
+                Log.d(TAG, ":setUpCameraOutputs:06")
 
                 // Danger, W.R.! Attempting to use too large a preview size could  exceed the camera
                 // bus' bandwidth limitation, resulting in gorgeous previews but the storage of
                 // garbage capture data.
                 previewSize = chooseOptimalSize(compatibleSizesList, rotatedPreviewWidth, rotatedPreviewHeight,
                     maxPreviewWidth, maxPreviewHeight, largestOutputSize)
+                Log.d(TAG, ":setUpCameraOutputs:07")
 
                 // We fit the aspect ratio of TextureView to the size of preview we picked.
                 if (resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE)
@@ -508,7 +549,7 @@ class MainActivity : AppCompatActivity(), View.OnClickListener,
 
                 // We've found a viable camera and finished setting up member variables,
                 // so we don't need to iterate through other available cameras
-                return
+                return true
             }
         }
         catch (e: CameraAccessException)
@@ -520,8 +561,10 @@ class MainActivity : AppCompatActivity(), View.OnClickListener,
             // Currently an NPE is thrown when the Camera2API is used but not supported on the
             // device this code runs.
             Toast.makeText(this, resources.getString(R.string.error), Toast.LENGTH_SHORT).show()
+            Log.e(TAG, e.toString())
         }
 
+        return false
     }
 
     /**
@@ -571,7 +614,7 @@ class MainActivity : AppCompatActivity(), View.OnClickListener,
             return
         }
 
-        setUpCameraOutputs(width, height)
+        if (!setUpCameraOutputs(width, height)) return
         configureTransform(width, height)
 
         /** A system service manager for detecting, characterizing, and connecting to [CameraDevice] */
@@ -676,9 +719,9 @@ class MainActivity : AppCompatActivity(), View.OnClickListener,
 
             /** We set up a [CaptureRequest.Builder] with the output Surface for new capture requests */
             previewRequestBuilder = cameraDevice!!.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW)
-            // The surface is used as an output target for this request
-            previewRequestBuilder.addTarget(surface)
-            previewRequestBuilder.addTarget(imageReader!!.surface)
+            // The surfaces are used as an output target for this request:
+            previewRequestBuilder.addTarget(surface) // surface for preview
+            previewRequestBuilder.addTarget(imageReader!!.surface) // surface for proccessing
 
             /**
              * Create a CameraCaptureSession for camera preview:
@@ -690,7 +733,8 @@ class MainActivity : AppCompatActivity(), View.OnClickListener,
              * complete and the session is ready to actually capture data, the provided
              * [CameraCaptureSession.StateCallback.onConfigured] callback will be called
              */
-            cameraDevice?.createCaptureSession(Arrays.asList(surface, imageReader?.surface),
+            cameraDevice?.createCaptureSession(
+                Arrays.asList(surface, imageReader?.surface),
                 object : CameraCaptureSession.StateCallback()
                 {
                     override fun onConfigured(cameraCaptureSession: CameraCaptureSession)
@@ -861,23 +905,22 @@ class MainActivity : AppCompatActivity(), View.OnClickListener,
                 set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE)
             }?.also { setAutoFlash(it) }
 
-            val captureCallback = object : CameraCaptureSession.CaptureCallback()
+            val captureCallback2 = object : CameraCaptureSession.CaptureCallback()
             {
                 override fun onCaptureCompleted(session: CameraCaptureSession, request: CaptureRequest,
                     result: TotalCaptureResult)
                 {
                     Log.d(TAG, ":captureCallback::onCaptureCompleted: Saved - $file")
                     Toast.makeText(applicationContext, "Saved: $file", Toast.LENGTH_SHORT).show()
-//                    runOnUiThread { Toast.makeText(this, "Saved: $file", Toast.LENGTH_SHORT).show()}
                     Log.d(TAG, file.toString())
                     unlockFocus()
                 }
             }
 
             captureSession?.apply {
-                stopRepeating()
-                abortCaptures()
-                capture(captureBuilder!!.build(), captureCallback, null)
+                stopRepeating() // Cancel any ongoing repeating capture
+                abortCaptures() // Discard all captures currently pending and in-progress as fast as possible
+                capture(captureBuilder!!.build(), captureCallback2, null)
             }
         }
         catch (e: CameraAccessException)
@@ -949,6 +992,9 @@ class MainActivity : AppCompatActivity(), View.OnClickListener,
         private val TAG = "gipsy:" + this::class.java.name
         private const val REQUEST_CAMERA_PERMISSION = 1
         private const val PIC_FILE_NAME = "pic.jpg"
+        private const val DEVIDOR = 100 //devidor for scaling down the surface size for better performance
+        private const val NUMBER_OF_TOP = 5 // number of top colors to present the user
+        private const val MAX_IMAGES = 50 // more allocation for better performance
 
         /** Conversion from screen rotation to JPEG orientation */
         private val ORIENTATIONS = SparseIntArray()
@@ -1056,60 +1102,152 @@ class MainActivity : AppCompatActivity(), View.OnClickListener,
     {
         // The return value is -1 if the specified value is negative; 0 if the specified value is zero;
         // and 1 if the specified value is positive
-        override fun compare(lhs: Size, rhs: Size) =
-        // We cast here to ensure the multiplications won't overflow
-            signum(lhs.width.toLong() * lhs.height - rhs.width.toLong() * rhs.height)
+        override fun compare(lhs: Size, rhs: Size ) : Int
+        {
+            Log.d(TAG, ":compare")
+            // We cast here to ensure the multiplications won't overflow
+            return signum(lhs.width.toLong() * lhs.height - rhs.width.toLong() * rhs.height)
+        }
 
     }
 
     /**
-     * Saves a JPEG [Image] into the specified [File].
+     *
      */
-    internal class ImageSaver(private val image: Image, private val file: File) : Runnable
+    internal class ImageSaver(private val image: Image, private val file: File, private val context : Context) : Runnable
     {
         override fun run()
         {
             Log.d(TAG, ":run")
-            val buffer = image.planes[0].buffer
-            val bytes = ByteArray(buffer.remaining())
-            buffer.get(bytes)
-            var output: FileOutputStream? = null
-            image.close()
-/*
-            try
-            {
-                output = FileOutputStream(file).apply{
-                    write(bytes)
-                }
-            }
-            catch (e: IOException)
-            {
-                Log.e(TAG, e.toString())
-            }
-            finally
-            {
-                image.close()
 
-                output?.let{
-                    try
-                    {
-                        it.close()
-                    }
-                    catch (e: IOException)
-                    {
-                        Log.e(TAG, e.toString())
-                    }
-                }
+//            YuvToBitmap()
+            jpegToBitmap()
+
+
+/*
+           val redBuffer = image.planes[0].buffer
+           val greenBuffer = image.planes[1].buffer
+           val blueBuffer = image.planes[2].buffer
+           val numberOfPixels = redBuffer.remaining()
+           val byteArray = ByteArray(numberOfPixels) //create byte array
+           redBuffer.get(byteArray) // transfers bytes from the plane buffer into the ByteArray
+           Log.d(TAG, ":byteArray[0] = ${byteArray[0]}")
+           greenBuffer.get(byteArray) // transfers bytes from the plane buffer into the ByteArray
+           Log.d(TAG, ":byteArray[0] = ${byteArray[0]}")
+           blueBuffer.get(byteArray) // transfers bytes from the plane buffer into the ByteArray
+           Log.d(TAG, ":byteArray[0] = ${byteArray[0]}")
+*/
+//            var output: FileOutputStream? = null
+           image.close()
+/*
+           try
+           {
+               output = FileOutputStream(file).apply{
+                   write(bytes)
+               }
+           }
+           catch (e: IOException)
+           {
+               Log.e(TAG, e.toString())
+           }
+           finally
+           {
+               image.close()
+
+               output?.let{
+                   try
+                   {
+                       it.close()
+                   }
+                   catch (e: IOException)
+                   {
+                       Log.e(TAG, e.toString())
+                   }
+               }
+           }
+       */
+        }
+
+        private fun jpegToBitmap()
+        {
+            Log.d(TAG, ":jpegToBitmap: jpeg values: width = ${image.width},  height = ${image.height} " +
+                   "number of pixels = ${image.width*image.height}")
+            val buffer = image.planes[0].buffer
+            val byteArray = ByteArray(buffer.remaining()) //create byte array
+            buffer.get(byteArray) // transfers bytes from the plane buffer into the ByteArray
+
+            val bitmap = BitmapFactory.decodeByteArray(byteArray, 0, byteArray.size)
+
+            val rgbMap = hashMapOf<Int, Int>()
+            for (ii in 0 until bitmap.width)
+            {
+               for (jj in 0 until bitmap.height)
+               {
+                   val pixel : Int = bitmap.getPixel(ii, jj)
+                   //using elvis operator: if index return null, use 0
+                   val count : Int = rgbMap[pixel] ?: 0
+                   rgbMap[pixel] = count + 1
+               }
             }
-        */
+
+            /*
+            for ((key, value) in rgbMap)
+            {
+               Log.d(TAG, ":jpegToBitmap: rgbMap.key = ${key}, rgbMap.value = ${value}")
+            }
+            */
+            // sort map by value
+            val rgbMapSorted = rgbMap.toList().sortedByDescending { (_, value) -> value}.toMap()
+
+            val iterator = rgbMapSorted.entries.iterator()
+            val topColorsPairList : MutableList<Triple<Int, Int, Float>> = ArrayList()
+
+            for (i in 1..NUMBER_OF_TOP)
+            {
+               if (iterator.hasNext())
+               {
+                   val next = iterator.next()
+                   val percentage : Float = (100*next.value.toFloat()/(image.width.toFloat()*image.height.toFloat()))
+                   topColorsPairList.add(Triple(next.key, next.value, percentage))
+               }
+            }
+
+            for (pair in topColorsPairList)
+            {
+               Log.d(TAG, ":jpegToBitmap: Key = ${pair.first}, Value = ${pair.second}, Percentage = ${pair.third}")
+            }
+        }
+
+        fun YuvToBitmap()
+        {
+           Log.d(TAG, ":YuvToBitmap")
+           val buffer = image.planes[0].buffer
+           val numberOfPixels = buffer.remaining()
+           val byteArray = ByteArray(numberOfPixels) //create byte array
+           buffer.get(byteArray) // transfers bytes from the plane buffer into the ByteArray
+
+           val rs = RenderScript.create(context)
+           val yuvToRgbIntrinsic = ScriptIntrinsicYuvToRGB.create(rs, Element.U8_4(rs))
+
+           val yuvType = Type.Builder(rs, Element.U8(rs)).setX(byteArray.size)
+           val inData = Allocation.createTyped(rs, yuvType.create(), Allocation.USAGE_SCRIPT)
+
+           val rgbaType = Type.Builder(rs, Element.RGBA_8888(rs)).setX(image.width).setY(image.height)
+           val outData = Allocation.createTyped(rs, rgbaType.create(), Allocation.USAGE_SCRIPT)
+
+           inData.copyFrom(byteArray)
+
+           yuvToRgbIntrinsic.setInput(inData)
+           yuvToRgbIntrinsic.forEach(outData)
+
+           val bitmap = Bitmap.createBitmap(image.width, image.height, Bitmap.Config.ARGB_8888)
+           outData.copyTo(bitmap)
         }
 
         companion object
         {
-            /**
-             * Tag for the [Log]
-             */
-            private val TAG = "gipsy:" + this::class.java.name
+           /** Tag for the [Log] */
+           private val TAG = "gipsy:" + this::class.java.name
         }
     }
 }
