@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <android.support.constraint.ConstraintLayout
-    xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
-    xmlns:tools="http://schemas.android.com/tools"
-    android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    tools:context=".MainActivity">
+        xmlns:android="http://schemas.android.com/apk/res/android"
+        xmlns:app="http://schemas.android.com/apk/res-auto"
+        xmlns:tools="http://schemas.android.com/tools"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        tools:context=".MainActivity" tools:layout_editor_absoluteY="81dp">
 
-<!--
+    <!--
     <TextView
         android:id="@+id/sample_text"
         android:layout_width="wrap_content"
@@ -19,7 +19,7 @@
         app:layout_constraintTop_toTopOf="parent" />
 -->
 
-<!--
+    <!--
     <TextureView
             android:id="@+id/texture_view"
             android:layout_width="match_parent"
@@ -31,20 +31,69 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_alignParentStart="true"
-            android:layout_alignParentTop="true" />
+            android:layout_alignParentTop="true" app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintStart_toStartOf="parent"/>
 
-    <Button
-            android:id="@+id/picture"
-            android:layout_width="wrap_content"
+    <TextView
+            android:id="@+id/TxtVw_top1"
+            android:layout_width="match_constraint"
             android:layout_height="wrap_content"
-            android:layout_gravity="center"
-            android:text="@string/picture"
+            android:gravity="center"
+            tools:text="45.5%"
+            app:layout_constraintStart_toEndOf="@+id/TxtVw_top2"
+            app:layout_constraintEnd_toEndOf="parent"
             android:layout_marginBottom="8dp"
             app:layout_constraintBottom_toBottomOf="parent"
-            android:layout_marginEnd="8dp"
-            app:layout_constraintEnd_toEndOf="parent"
+            android:layout_marginEnd="8dp"/>
+
+    <TextView
+            android:id="@+id/TxtVw_top2"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            tools:text="25.5%"
+            app:layout_constraintStart_toEndOf="@+id/TxtVw_top3"
+            app:layout_constraintEnd_toStartOf="@+id/TxtVw_top1"
+            android:layout_marginBottom="8dp"
+            app:layout_constraintBottom_toBottomOf="parent"
+            android:layout_marginEnd="8dp"/>
+
+    <TextView
+            android:id="@+id/TxtVw_top3"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            tools:text="45.5%"
+            app:layout_constraintStart_toEndOf="@+id/TxtVw_top4"
+            app:layout_constraintEnd_toStartOf="@+id/TxtVw_top2"
+            android:layout_marginBottom="8dp"
+            app:layout_constraintBottom_toBottomOf="parent"
+            android:layout_marginEnd="8dp"/>
+
+    <TextView
+            android:id="@+id/TxtVw_top4"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            tools:text="25.5%"
+            app:layout_constraintStart_toEndOf="@+id/TxtVw_top5"
+            app:layout_constraintEnd_toStartOf="@+id/TxtVw_top3"
+            android:layout_marginBottom="8dp"
+            app:layout_constraintBottom_toBottomOf="parent"
+            android:layout_marginEnd="8dp"/>
+
+    <TextView
+            android:id="@+id/TxtVw_top5"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            tools:text="25.5%"
+            app:layout_constraintEnd_toStartOf="@+id/TxtVw_top4"
+            android:layout_marginBottom="7dp"
+            app:layout_constraintStart_toStartOf="parent"
             android:layout_marginStart="8dp"
-            app:layout_constraintStart_toStartOf="parent"/>
+            app:layout_constraintBottom_toBottomOf="parent"
+            android:layout_marginEnd="8dp"/>
 
 
 </android.support.constraint.ConstraintLayout>
