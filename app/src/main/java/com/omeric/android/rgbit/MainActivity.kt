@@ -164,12 +164,6 @@ class MainActivity : AppCompatActivity(), ActivityCompat.OnRequestPermissionsRes
                 image.close()
             }
         }
-/*
-        else
-        {
-            backgroundHandler?.post(ImageSaver(it.acquireNextImage(), file, this))
-        }
-*/
     }
 
     /**
@@ -320,7 +314,6 @@ class MainActivity : AppCompatActivity(), ActivityCompat.OnRequestPermissionsRes
         }
     }
 
-
     /**
      * Sets up member variables related to camera.
      *
@@ -354,7 +347,6 @@ class MainActivity : AppCompatActivity(), ActivityCompat.OnRequestPermissionsRes
                     // skip if it's the front facing camera
                     continue
                 }
-                Log.d(TAG, ":setUpCameraOutputs:02")
 
                 /**
                  * StreamConfigurationMap the authoritative list for all output formats (and sizes respectively for that format)
@@ -367,16 +359,6 @@ class MainActivity : AppCompatActivity(), ActivityCompat.OnRequestPermissionsRes
                 ) ?: continue // skip if StreamConfigurationMap is null
                 Log.d(TAG, ":setUpCameraOutputs:03")
 
-
-
-/*
-                val outpusFormats = streamConfiguration.outputFormats
-//                Log.d(TAG, ":setUpCameraOutputs:03.1: outpusFormats = ${outpusFormats} ")
-                for (element in outpusFormats) {
-                    Log.d(TAG, ":setUpCameraOutputs:03.1: outpusFormats = 0x${Integer.toHexString(element)} ")
-                }
-*/
-
                 /**
                  * For still image captures, we use the largest available size:
                  * Get an array of supported sizes for a given format, and then get the largest size by using
@@ -384,7 +366,6 @@ class MainActivity : AppCompatActivity(), ActivityCompat.OnRequestPermissionsRes
                  * for describing width and height dimensions in pixels
                  */
                 val largestOutputSize = Collections.max(
-//                    Arrays.asList(*streamConfiguration.getOutputSizes(ImageFormat.YUV_420_888)),
                     Arrays.asList(*streamConfiguration.getOutputSizes(ImageFormat.JPEG)),
                     CompareSizesByArea())
                 Log.d(TAG, ":setUpCameraOutputs:largestOutputSize: width = ${largestOutputSize.width}, " +
@@ -404,7 +385,6 @@ class MainActivity : AppCompatActivity(), ActivityCompat.OnRequestPermissionsRes
                  */
                 imageReader = ImageReader.newInstance( // Create a new reader for images of the desired size and format
                     largestOutputSize.width/DEVIDOR, largestOutputSize.height/DEVIDOR,
-//                    ImageFormat.YUV_420_888, 50
                     ImageFormat.JPEG, MAX_IMAGES
                 ).apply {
                     // Register a listener to be invoked when a new image becomes available from the ImageReader
@@ -655,9 +635,6 @@ class MainActivity : AppCompatActivity(), ActivityCompat.OnRequestPermissionsRes
                         captureSession = cameraCaptureSession
                         try
                         {
-                            // Set the autofocus field to continuous
-//                            previewRequestBuilder.set(CaptureRequest.CONTROL_AF_MODE,
-//                                CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE)
                             // Overall mode of 3A (auto-exposure, auto-white-balance, auto-focus) control routines
                             previewRequestBuilder.set(CaptureRequest.CONTROL_MODE, CaptureRequest.CONTROL_MODE_AUTO)
                             previewRequestBuilder.set(CaptureRequest.CONTROL_AE_TARGET_FPS_RANGE, Range(MIN_FPS, MAX_FPS))
@@ -835,8 +812,10 @@ class MainActivity : AppCompatActivity(), ActivityCompat.OnRequestPermissionsRes
 
     private fun jpegToBitmap(image: Image)
     {
+/*
         Log.d(TAG, ":jpegToBitmap: jpeg values: width = ${image.width},  height = ${image.height} " +
                "number of pixels = ${image.width*image.height}")
+*/
         val buffer = image.planes[0].buffer
         val byteArray = ByteArray(buffer.remaining()) //create byte array
         buffer.get(byteArray) // transfers bytes from the plane buffer into the ByteArray
@@ -861,9 +840,11 @@ class MainActivity : AppCompatActivity(), ActivityCompat.OnRequestPermissionsRes
            Log.d(TAG, ":jpegToBitmap: rgbMap.key = ${key}, rgbMap.value = ${value}")
         }
         */
+
         // sort map by value
         val rgbMapSorted = rgbMap.toList().sortedByDescending { (_, value) -> value}.toMap()
 
+        // prepare iterator and list of top 5 colors
         val iterator = rgbMapSorted.entries.iterator()
         val topColorsPairList : MutableList<Triple<Int, Int, Float>> = ArrayList()
 
@@ -874,7 +855,6 @@ class MainActivity : AppCompatActivity(), ActivityCompat.OnRequestPermissionsRes
             {
                 val next = iterator.next()
                 val percentage : Float = (100*next.value.toFloat()/(bitmap.width.toFloat()*bitmap.height.toFloat()))
-//                val percentage : Int = (100*next.value/(bitmap.width*bitmap.height))
                 topColorsPairList.add(Triple(next.key, next.value, percentage))
             }
             else /** in case there are only [NUMBER_OF_TOP] or less dominant colors */
@@ -883,8 +863,12 @@ class MainActivity : AppCompatActivity(), ActivityCompat.OnRequestPermissionsRes
             }
         }
 
+        /**
+         * [toInt] is required for negative (signed) Int's
+         * see: https://youtrack.jetbrains.com/issue/KT-2780
+         * */
         this@MainActivity.runOnUiThread{
-            Log.i(TAG,"runOnUiThread: topColorsPairList.size = ${topColorsPairList.size}")
+//            Log.i(TAG,"runOnUiThread: topColorsPairList.size = ${topColorsPairList.size}")
             topColor1TextView.text = (topColorsPairList[0].third.toInt().toString()+"%")
             topColor1TextView.setBackgroundColor(topColorsPairList[0].first)
             var bckgrColor = topColorsPairList[0].first
@@ -950,5 +934,4 @@ class MainActivity : AppCompatActivity(), ActivityCompat.OnRequestPermissionsRes
         val bitmap = Bitmap.createBitmap(image.width, image.height, Bitmap.Config.ARGB_8888)
         outData.copyTo(bitmap)
     }
-
 }
