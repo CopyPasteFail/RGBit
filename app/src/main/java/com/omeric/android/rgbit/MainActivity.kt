@@ -24,6 +24,7 @@ import android.util.SparseIntArray
 import android.view.Surface
 import android.view.View
 import android.widget.Button
+import android.widget.TextView
 import android.widget.Toast
 import java.io.File
 import java.lang.Long.signum
@@ -71,6 +72,12 @@ class MainActivity : AppCompatActivity(), ActivityCompat.OnRequestPermissionsRes
      * An [AutoFitTextureView] for camera preview
      */
     private lateinit var autoFitTextureView: AutoFitTextureView
+
+    private lateinit var topColor1TextView: TextView
+    private lateinit var topColor2TextView: TextView
+    private lateinit var topColor3TextView: TextView
+    private lateinit var topColor4TextView: TextView
+    private lateinit var topColor5TextView: TextView
 
     /**
      * A [CameraCaptureSession] for camera preview
@@ -140,11 +147,6 @@ class MainActivity : AppCompatActivity(), ActivityCompat.OnRequestPermissionsRes
     private var imageReader: ImageReader? = null
 
     /**
-     * This is the output file for our picture.
-     */
-    private lateinit var file: File
-
-    /**
      * This a callback object for the [ImageReader]. "onImageAvailable" will be called when a
      * still image is ready to be saved
      */
@@ -159,7 +161,11 @@ class MainActivity : AppCompatActivity(), ActivityCompat.OnRequestPermissionsRes
         val image = it.acquireLatestImage()
         if (image != null)
         {
-            backgroundHandler?.post(ImageSaver(image,this))
+            backgroundHandler?.post {
+//                Log.d(TAG, ":onImageAvailableListener:Runnable:")
+                jpegToBitmap(image)
+                image.close()
+            }
         }
 /*
         else
@@ -239,6 +245,11 @@ class MainActivity : AppCompatActivity(), ActivityCompat.OnRequestPermissionsRes
         // Example of a call to a native method
 //        sample_text.text = stringFromJNI()
         autoFitTextureView = findViewById(R.id.texture)
+        topColor1TextView = findViewById(R.id.txtVw_top1)
+        topColor2TextView = findViewById(R.id.txtVw_top2)
+        topColor3TextView = findViewById(R.id.txtVw_top3)
+        topColor4TextView = findViewById(R.id.txtVw_top4)
+        topColor5TextView = findViewById(R.id.txtVw_top5)
     }
 
     override fun onResume()
@@ -736,22 +747,8 @@ class MainActivity : AppCompatActivity(), ActivityCompat.OnRequestPermissionsRes
         }
     }
 
-    /**
-     * A native method that is implemented by the 'native-lib' native library,
-     * which is packaged with this application.
-     */
-//    external fun stringFromJNI(): String
-
     companion object
     {
-        // Used to load the 'native-lib' library on application startup.
-/*
-        init
-        {
-            System.loadLibrary("native-lib")
-        }
-*/
-
         /** Tag for the [Log] */
         private val TAG = "gipsy:" + this::class.java.name
         private const val REQUEST_CAMERA_PERMISSION = 1
@@ -848,68 +845,75 @@ class MainActivity : AppCompatActivity(), ActivityCompat.OnRequestPermissionsRes
             // We cast here to ensure the multiplications won't overflow
             return signum(lhs.width.toLong() * lhs.height - rhs.width.toLong() * rhs.height)
         }
-
     }
 
-    /**
-     *
-     */
-    internal class ImageSaver(private val image: Image, private val context : Context) : Runnable
+    private fun jpegToBitmap(image: Image)
     {
-        override fun run()
-        {
-//            Log.d(TAG, ":run")
+        Log.d(TAG, ":jpegToBitmap: jpeg values: width = ${image.width},  height = ${image.height} " +
+               "number of pixels = ${image.width*image.height}")
+        val buffer = image.planes[0].buffer
+        val byteArray = ByteArray(buffer.remaining()) //create byte array
+        buffer.get(byteArray) // transfers bytes from the plane buffer into the ByteArray
 
-//            YuvToBitmap()
-            jpegToBitmap()
-            image.close()
+        val bitmap = BitmapFactory.decodeByteArray(byteArray, 0, byteArray.size)
+
+        val rgbMap = hashMapOf<Int, Int>()
+        for (ii in 0 until bitmap.width)
+        {
+            for (jj in 0 until bitmap.height)
+            {
+                val pixel : Int = bitmap.getPixel(ii, jj)
+                //using elvis operator: if index return null, use 0
+                val count : Int = rgbMap[pixel] ?: 0
+                rgbMap[pixel] = count + 1
+            }
         }
 
-        private fun jpegToBitmap()
+        /*
+        for ((key, value) in rgbMap)
         {
-/*
-            Log.d(TAG, ":jpegToBitmap: jpeg values: width = ${image.width},  height = ${image.height} " +
-                   "number of pixels = ${image.width*image.height}")
-*/
-            val buffer = image.planes[0].buffer
-            val byteArray = ByteArray(buffer.remaining()) //create byte array
-            buffer.get(byteArray) // transfers bytes from the plane buffer into the ByteArray
+           Log.d(TAG, ":jpegToBitmap: rgbMap.key = ${key}, rgbMap.value = ${value}")
+        }
+        */
+        // sort map by value
+        val rgbMapSorted = rgbMap.toList().sortedByDescending { (_, value) -> value}.toMap()
 
-            val bitmap = BitmapFactory.decodeByteArray(byteArray, 0, byteArray.size)
+        val iterator = rgbMapSorted.entries.iterator()
+        val topColorsPairList : MutableList<Triple<Int, Int, Float>> = ArrayList()
 
-            val rgbMap = hashMapOf<Int, Int>()
-            for (ii in 0 until bitmap.width)
+        /** get [NUMBER_OF_TOP] most abundant colors */
+        for (i in 1..NUMBER_OF_TOP)
+        {
+            if (iterator.hasNext())
             {
-               for (jj in 0 until bitmap.height)
-               {
-                   val pixel : Int = bitmap.getPixel(ii, jj)
-                   //using elvis operator: if index return null, use 0
-                   val count : Int = rgbMap[pixel] ?: 0
-                   rgbMap[pixel] = count + 1
-               }
+                val next = iterator.next()
+                val percentage : Float = (100*next.value.toFloat()/(image.width.toFloat()*image.height.toFloat()))
+//                val percentage : Int = (100*next.value/(bitmap.width*bitmap.height))
+                topColorsPairList.add(Triple(next.key, next.value, percentage))
             }
-
-            /*
-            for ((key, value) in rgbMap)
+            else // in case there's only one dominant color
             {
-               Log.d(TAG, ":jpegToBitmap: rgbMap.key = ${key}, rgbMap.value = ${value}")
+                topColorsPairList.add(Triple(0,0,0.toFloat()))
             }
-            */
-            // sort map by value
-            val rgbMapSorted = rgbMap.toList().sortedByDescending { (_, value) -> value}.toMap()
+        }
 
-            val iterator = rgbMapSorted.entries.iterator()
-            val topColorsPairList : MutableList<Triple<Int, Int, Float>> = ArrayList()
+        this@MainActivity.runOnUiThread{
+                Log.i(TAG,"runOnUiThread: topColorsPairList.size = ${topColorsPairList.size}")
+                topColor1TextView.text = (topColorsPairList[0].third.toInt().toString()+"%")
+                topColor1TextView.setBackgroundColor(topColorsPairList[0].first)
+                val color = topColorsPairList[0].first
+                topColor1TextView.setTextColor(
+                        (color.inv() and 0x0000ff) + (color.inv() and 0x00ff00) + (color.inv() and 0xff0000))
 
-            for (i in 1..NUMBER_OF_TOP)
-            {
-               if (iterator.hasNext())
-               {
-                   val next = iterator.next()
-                   val percentage : Float = (100*next.value.toFloat()/(image.width.toFloat()*image.height.toFloat()))
-                   topColorsPairList.add(Triple(next.key, next.value, percentage))
-               }
-            }
+                topColor2TextView.text = (topColorsPairList[1].third.toInt().toString()+"%")
+                topColor2TextView.setBackgroundColor(topColorsPairList[1].first)
+                topColor3TextView.text = (topColorsPairList[2].third.toInt().toString()+"%")
+                topColor3TextView.setBackgroundColor(topColorsPairList[2].first)
+                topColor4TextView.text = (topColorsPairList[3].third.toInt().toString()+"%")
+                topColor4TextView.setBackgroundColor(topColorsPairList[3].first)
+                topColor5TextView.text = (topColorsPairList[4].third.toInt().toString()+"%")
+                topColor5TextView.setBackgroundColor(topColorsPairList[4].first)
+        }
 
 /*
             for (pair in topColorsPairList)
@@ -917,38 +921,32 @@ class MainActivity : AppCompatActivity(), ActivityCompat.OnRequestPermissionsRes
                Log.d(TAG, ":jpegToBitmap: Key = ${pair.first}, Value = ${pair.second}, Percentage = ${pair.third}")
             }
 */
-        }
-
-        fun YuvToBitmap()
-        {
-           Log.d(TAG, ":YuvToBitmap")
-           val buffer = image.planes[0].buffer
-           val numberOfPixels = buffer.remaining()
-           val byteArray = ByteArray(numberOfPixels) //create byte array
-           buffer.get(byteArray) // transfers bytes from the plane buffer into the ByteArray
-
-           val rs = RenderScript.create(context)
-           val yuvToRgbIntrinsic = ScriptIntrinsicYuvToRGB.create(rs, Element.U8_4(rs))
-
-           val yuvType = Type.Builder(rs, Element.U8(rs)).setX(byteArray.size)
-           val inData = Allocation.createTyped(rs, yuvType.create(), Allocation.USAGE_SCRIPT)
-
-           val rgbaType = Type.Builder(rs, Element.RGBA_8888(rs)).setX(image.width).setY(image.height)
-           val outData = Allocation.createTyped(rs, rgbaType.create(), Allocation.USAGE_SCRIPT)
-
-           inData.copyFrom(byteArray)
-
-           yuvToRgbIntrinsic.setInput(inData)
-           yuvToRgbIntrinsic.forEach(outData)
-
-           val bitmap = Bitmap.createBitmap(image.width, image.height, Bitmap.Config.ARGB_8888)
-           outData.copyTo(bitmap)
-        }
-
-        companion object
-        {
-           /** Tag for the [Log] */
-           private val TAG = "gipsy:" + this::class.java.name
-        }
     }
+
+    fun YuvToBitmap(image: Image)
+    {
+        Log.d(TAG, ":YuvToBitmap")
+        val buffer = image.planes[0].buffer
+        val numberOfPixels = buffer.remaining()
+        val byteArray = ByteArray(numberOfPixels) //create byte array
+        buffer.get(byteArray) // transfers bytes from the plane buffer into the ByteArray
+
+        val rs = RenderScript.create(this)
+        val yuvToRgbIntrinsic = ScriptIntrinsicYuvToRGB.create(rs, Element.U8_4(rs))
+
+        val yuvType = Type.Builder(rs, Element.U8(rs)).setX(byteArray.size)
+        val inData = Allocation.createTyped(rs, yuvType.create(), Allocation.USAGE_SCRIPT)
+
+        val rgbaType = Type.Builder(rs, Element.RGBA_8888(rs)).setX(image.width).setY(image.height)
+        val outData = Allocation.createTyped(rs, rgbaType.create(), Allocation.USAGE_SCRIPT)
+
+        inData.copyFrom(byteArray)
+
+        yuvToRgbIntrinsic.setInput(inData)
+        yuvToRgbIntrinsic.forEach(outData)
+
+        val bitmap = Bitmap.createBitmap(image.width, image.height, Bitmap.Config.ARGB_8888)
+        outData.copyTo(bitmap)
+    }
+
 }
