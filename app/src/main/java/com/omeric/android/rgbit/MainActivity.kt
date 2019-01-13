@@ -5,28 +5,25 @@ import android.content.Context
 import android.content.pm.PackageManager
 import android.content.res.Configuration
 import android.graphics.*
-import android.support.v7.app.AppCompatActivity
-import android.os.Bundle
 import android.hardware.camera2.*
-import android.view.TextureView
-import android.util.Size
 import android.media.Image
 import android.media.ImageReader
+import android.os.Bundle
 import android.os.Handler
 import android.os.HandlerThread
 import android.renderscript.*
 import android.support.v4.app.ActivityCompat
 import android.support.v4.content.ContextCompat
 import android.support.v7.app.AlertDialog
+import android.support.v7.app.AppCompatActivity
 import android.util.Log
 import android.util.Range
+import android.util.Size
 import android.util.SparseIntArray
 import android.view.Surface
-import android.view.View
-import android.widget.Button
+import android.view.TextureView
 import android.widget.TextView
 import android.widget.Toast
-import java.io.File
 import java.lang.Long.signum
 import java.util.*
 import java.util.concurrent.Semaphore
@@ -736,17 +733,6 @@ class MainActivity : AppCompatActivity(), ActivityCompat.OnRequestPermissionsRes
         autoFitTextureView.setTransform(matrix)
     }
 
-    // Flash is automatically enabled when necessary
-    private fun setAutoFlash(requestBuilder: CaptureRequest.Builder)
-    {
-        Log.d(TAG, ":setAutoFlash")
-        if (flashSupported)
-        {
-            // set auto exposure mode: camera device controls the camera's flash unit, firing it in low-light conditions
-            requestBuilder.set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_ON_AUTO_FLASH)
-        }
-    }
-
     companion object
     {
         /** Tag for the [Log] */
@@ -887,32 +873,47 @@ class MainActivity : AppCompatActivity(), ActivityCompat.OnRequestPermissionsRes
             if (iterator.hasNext())
             {
                 val next = iterator.next()
-                val percentage : Float = (100*next.value.toFloat()/(image.width.toFloat()*image.height.toFloat()))
+                val percentage : Float = (100*next.value.toFloat()/(bitmap.width.toFloat()*bitmap.height.toFloat()))
 //                val percentage : Int = (100*next.value/(bitmap.width*bitmap.height))
                 topColorsPairList.add(Triple(next.key, next.value, percentage))
             }
-            else // in case there's only one dominant color
+            else /** in case there are only [NUMBER_OF_TOP] or less dominant colors */
             {
                 topColorsPairList.add(Triple(0,0,0.toFloat()))
             }
         }
 
         this@MainActivity.runOnUiThread{
-                Log.i(TAG,"runOnUiThread: topColorsPairList.size = ${topColorsPairList.size}")
-                topColor1TextView.text = (topColorsPairList[0].third.toInt().toString()+"%")
-                topColor1TextView.setBackgroundColor(topColorsPairList[0].first)
-                val color = topColorsPairList[0].first
-                topColor1TextView.setTextColor(
-                        (color.inv() and 0x0000ff) + (color.inv() and 0x00ff00) + (color.inv() and 0xff0000))
+            Log.i(TAG,"runOnUiThread: topColorsPairList.size = ${topColorsPairList.size}")
+            topColor1TextView.text = (topColorsPairList[0].third.toInt().toString()+"%")
+            topColor1TextView.setBackgroundColor(topColorsPairList[0].first)
+            var bckgrColor = topColorsPairList[0].first
+            topColor1TextView.setTextColor((bckgrColor.inv() and 0x0000ff) or (bckgrColor.inv() and 0x00ff00)
+                    or (bckgrColor.inv() and 0xff0000) or (0xFF000000.toInt()))
 
-                topColor2TextView.text = (topColorsPairList[1].third.toInt().toString()+"%")
-                topColor2TextView.setBackgroundColor(topColorsPairList[1].first)
-                topColor3TextView.text = (topColorsPairList[2].third.toInt().toString()+"%")
-                topColor3TextView.setBackgroundColor(topColorsPairList[2].first)
-                topColor4TextView.text = (topColorsPairList[3].third.toInt().toString()+"%")
-                topColor4TextView.setBackgroundColor(topColorsPairList[3].first)
-                topColor5TextView.text = (topColorsPairList[4].third.toInt().toString()+"%")
-                topColor5TextView.setBackgroundColor(topColorsPairList[4].first)
+            topColor2TextView.text = (topColorsPairList[1].third.toInt().toString()+"%")
+            topColor2TextView.setBackgroundColor(topColorsPairList[1].first)
+            bckgrColor = topColorsPairList[1].first
+            topColor2TextView.setTextColor((bckgrColor.inv() and 0x0000ff) or (bckgrColor.inv() and 0x00ff00)
+                    or (bckgrColor.inv() and 0xff0000) or (0xFF000000.toInt()))
+
+            topColor3TextView.text = (topColorsPairList[2].third.toInt().toString()+"%")
+            topColor3TextView.setBackgroundColor(topColorsPairList[2].first)
+            bckgrColor = topColorsPairList[2].first
+            topColor3TextView.setTextColor((bckgrColor.inv() and 0x0000ff) or (bckgrColor.inv() and 0x00ff00)
+                    or (bckgrColor.inv() and 0xff0000) or (0xFF000000.toInt()))
+
+            topColor4TextView.text = (topColorsPairList[3].third.toInt().toString()+"%")
+            topColor4TextView.setBackgroundColor(topColorsPairList[3].first)
+            bckgrColor = topColorsPairList[3].first
+            topColor4TextView.setTextColor((bckgrColor.inv() and 0x0000ff) or (bckgrColor.inv() and 0x00ff00)
+                    or (bckgrColor.inv() and 0xff0000) or (0xFF000000.toInt()))
+
+            topColor5TextView.text = (topColorsPairList[4].third.toInt().toString()+"%")
+            topColor5TextView.setBackgroundColor(topColorsPairList[4].first)
+            bckgrColor = topColorsPairList[4].first
+            topColor5TextView.setTextColor((bckgrColor.inv() and 0x0000ff) or (bckgrColor.inv() and 0x00ff00)
+                    or (bckgrColor.inv() and 0xff0000) or (0xFF000000.toInt()))
         }
 
 /*
@@ -923,7 +924,8 @@ class MainActivity : AppCompatActivity(), ActivityCompat.OnRequestPermissionsRes
 */
     }
 
-    fun YuvToBitmap(image: Image)
+    @Suppress("unused")
+    fun yuvToBitmap(image: Image)
     {
         Log.d(TAG, ":YuvToBitmap")
         val buffer = image.planes[0].buffer

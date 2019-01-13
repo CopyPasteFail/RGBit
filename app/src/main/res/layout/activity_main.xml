@@ -24,6 +24,8 @@
             tools:text="45.5%"
             android:textColor="@android:color/white"
             android:background="@color/colorPrimary"
+            android:textSize="28sp"
+            android:elevation="2dp"
             app:layout_constraintStart_toEndOf="@+id/txtVw_top2"
             app:layout_constraintEnd_toEndOf="parent"
             android:layout_marginBottom="8dp"
@@ -38,11 +40,12 @@
             tools:text="25.5%"
             android:textColor="@android:color/white"
             android:background="@color/colorPrimary"
+            android:textSize="28sp"
+            android:elevation="2dp"
             app:layout_constraintStart_toEndOf="@+id/txtVw_top3"
             app:layout_constraintEnd_toStartOf="@+id/txtVw_top1"
             android:layout_marginBottom="8dp"
             app:layout_constraintBottom_toBottomOf="parent"
-            android:textSize="25sp"
             android:layout_marginEnd="8dp"/>
 
     <TextView
@@ -53,11 +56,12 @@
             tools:text="45.5%"
             android:textColor="@android:color/white"
             android:background="@color/colorPrimary"
+            android:textSize="28sp"
+            android:elevation="2dp"
             app:layout_constraintStart_toEndOf="@+id/txtVw_top4"
             app:layout_constraintEnd_toStartOf="@+id/txtVw_top2"
             android:layout_marginBottom="8dp"
             app:layout_constraintBottom_toBottomOf="parent"
-            android:textSize="30sp"
             android:layout_marginEnd="8dp"/>
 
     <TextView
@@ -68,11 +72,12 @@
             tools:text="25.5%"
             android:textColor="@android:color/white"
             android:background="@color/colorPrimary"
+            android:textSize="28sp"
+            android:elevation="2dp"
             app:layout_constraintStart_toEndOf="@+id/txtVw_top5"
             app:layout_constraintEnd_toStartOf="@+id/txtVw_top3"
             android:layout_marginBottom="8dp"
             app:layout_constraintBottom_toBottomOf="parent"
-            android:textSize="20sp"
             android:layout_marginEnd="8dp"/>
 
     <TextView
@@ -83,12 +88,12 @@
             tools:text="25.5%"
             android:textColor="@android:color/white"
             android:background="@color/colorPrimary"
+            android:textSize="28sp"
+            android:elevation="2dp"
             android:layout_marginBottom="8dp"
             app:layout_constraintStart_toStartOf="parent"
             android:layout_marginStart="8dp"
             app:layout_constraintBottom_toBottomOf="parent"
             android:layout_marginEnd="8dp"
             app:layout_constraintEnd_toStartOf="@+id/txtVw_top4"/>
-<!--
--->
 </android.support.constraint.ConstraintLayout>
