@@ -714,9 +714,12 @@ class MainActivity : AppCompatActivity(), ActivityCompat.OnRequestPermissionsRes
     {
         /** Tag for the [Log] */
         private val TAG = "gipsy:" + this::class.java.name
+
         private const val REQUEST_CAMERA_PERMISSION = 1
-        private const val DEVIDOR = 50 //devidor for scaling down the surface size for better performance
         private const val NUMBER_OF_TOP = 5 // number of top colors to present the user
+
+        /** Permormance const */
+        private const val DEVIDOR = 50 //devidor for scaling down the surface size for better performance
         private const val MAX_IMAGES = 50 // more allocation for better performance
         private const val MIN_FPS = 5
         private const val MAX_FPS = 8
