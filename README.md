@@ -29,8 +29,8 @@ Configurs the camera to output JPEG, a background thread will convert it to Bitm
 There are many improvements that can be done to improve performance, one option would probably be using YUV as output becuase it saves the time for compressing to JPEG.
 
 In order to improve performance, a number of `consts` can be tweaked:
-DEVIDOR - devidor for scaling down the surface (picture) size for better performance
-MAX_IMAGES - more memory allocation for better performance
-MIN_FPS = 5 - min FPS
-MAX_FPS = 8 - max FPS of the camera, less FPS will improve performance
+- DEVIDOR - devidor for scaling down the surface (picture) size for better performance
+- MAX_IMAGES - more memory allocation for better performance
+- MIN_FPS = 5 - min FPS
+- MAX_FPS = 8 - max FPS of the camera, less FPS will improve performance
 
