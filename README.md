@@ -3,7 +3,7 @@ This app will show you the top 5 most common colors in a frame while seeing a pr
 
 
 ## Table of content
-- [How It Works](#How It Works)
+- [How It Works](#How-It-Works)
 - [Installation](#Installation)
 - [Performance](#license)
 - [Maintainers](#Maintainers)
